@@ -71,7 +71,7 @@ def thermostat():
 def lightbulb():
     return 'On'
 
-@app.route('/home/trashcan', methods=['GET','POST'])
+@app.route('/home/trashcan', methods=['GET'])
 @login_required
 
 def trashcan():
@@ -83,7 +83,7 @@ def trashcan():
 def doorlock():
     return 'Locked'
 
-@app.route('/home/camera', methods=['GET', 'POST'])
+@app.route('/home/camera', methods=['GET'])
 @login_required
 
 def camera():
