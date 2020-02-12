@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, ValidationError, EqualTo, Email
+from wtforms import StringField, PasswordField, SubmitField, IntegerField
+from wtforms.validators import DataRequired, ValidationError, EqualTo, Email, Length
 from app.models import User
 
 class LoginForm(FlaskForm):
@@ -24,3 +24,14 @@ class RegisterForm(FlaskForm):
         user = User.query.filter_by(email=email.data).first()
         if user is not None:
             raise ValidationError('Email already in use')
+
+#TODO: Maybe validate range of temp? Or leave as vuln?
+class TemperatureForm(FlaskForm):
+    temperature = IntegerField('Temperature', validators=[DataRequired()])
+
+class DoorLockForm(FlaskForm):
+    pin = IntegerField('Pin', validators=[DataRequired(), Length(min=4, max=4)])
+
+#TODO: Maybe validate bulb?
+class LightBulbForm(FlaskForm):
+    turn = StringField('Status', validators=[DataRequired()])
