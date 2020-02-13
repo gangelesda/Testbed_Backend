@@ -4,8 +4,9 @@ from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User
 from app.forms import LoginForm, RegisterForm
 
+#Formating for json response
 def makeResponse(stat, msg, uname=None):
-    if uname is not None:
+    if uname is None:
         return jsonify(status = stat,
                         message = msg)
     return jsonify(status = stat,
@@ -15,20 +16,26 @@ def makeResponse(stat, msg, uname=None):
 @app.route('/')
 @app.route('/index') 
 
+#Render Main Page
 def home():
     return render_template('index.html')
 
 @app.route('/login', methods=['POST'])
 
 def login():
+    #Check session
     if current_user.is_authenticated:
-        return "Already Logged In"
+        #Response is same as successful to be easibly handled by android
+        response = makeResponse(0, "Login successful", current_user.username)
+        return response
+    #CSRF disabled as it was causing trouble with android (fix in later iterations)
     form = LoginForm(csrf_enabled=False)
     if form.validate():
         user = User.query.filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
             response = makeResponse(1, "Invalid username and password combination")
             return response
+        #Create the session
         login_user(user)
         response = makeResponse(0, "Login successful", form.username.data)
         return response
@@ -47,14 +54,17 @@ def logout():
 def register():
     if(current_user.is_authenticated):
         return redirect(url_for('index'))
+    #CSRF disabled as it was causing trouble with android (fix in later iterations)
     form = RegisterForm(csrf_enabled=False)
     if form.validate_on_submit():
         user = User(username=form.username.data, email=form.email.data)
         user.set_password(form.password.data)
+        #Add user to database
         db.session.add(user)
         db.session.commit()
         response = makeResponse(0, "User Created")
         return response
+    #This will be the response even on missing fields as I have not seen part of the API been able to handle individual validators
     else:
         response = makeResponse(1, "User or Email already in use")
         return response
