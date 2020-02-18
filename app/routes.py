@@ -2,7 +2,7 @@ from flask import render_template, jsonify
 from app import app, db
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User
-from app.forms import LoginForm, RegisterForm
+from app.forms import LoginForm, RegisterForm, TemperatureForm, LightBulbForm
 
 #Formating for json response
 def makeResponse(stat, msg, uname=None):
@@ -14,7 +14,7 @@ def makeResponse(stat, msg, uname=None):
                     full_name = uname)
 
 @app.route('/')
-@app.route('/index') 
+@app.route('/index')   
 
 #Render Main Page
 def home():
@@ -90,8 +90,13 @@ def lightbulb_status():
 @app.route('/home/lightbulb/turn', methods=['POST'])
 @login_required
 
-def turn_on_off():
-    return 'Turned'
+def turn():
+    print("Here")
+    form = LightBulbForm(csrf_enabled = False)
+    if form.validate_on_submit():
+        return makeResponse(0,"Turned")
+    else:
+        return makeResponse(1,"Bad")
 
 @app.route('/home/trashcan', methods=['GET'])
 @login_required
