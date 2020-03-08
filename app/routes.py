@@ -1,8 +1,24 @@
 from flask import render_template, jsonify
-from app import app, db
+from app import app, db, dynamodb, IoTMEF
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User
 from app.forms import LoginForm, RegisterForm, TemperatureForm, LightBulbForm
+
+#Imports for DynamoDB
+from boto3.dynamodb.conditions import Key, Attr 
+import json
+import decimal
+import ast
+
+#Helper
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
 
 #Formating for json response
 def makeResponse(stat, msg, uname=None):
@@ -69,7 +85,7 @@ def register():
         response = makeResponse(1, "User or Email already in use")
         return response
 
-@app.route('/home/thermostat', methods=['GET'])
+@app.route('/home/thermostat/status', methods=['GET'])
 @login_required
 
 def thermostart_get_temp():
@@ -81,11 +97,18 @@ def thermostart_get_temp():
 def set_temp():
     return 'Set Temperature'
 
-@app.route('/home/lightbulb', methods=['GET'])
+@app.route('/home/lightbulb/status', methods=['GET'])
 @login_required
 
 def lightbulb_status():
-    return 'On'
+    query_last = IoTMEF.query(
+        KeyConditionExpression = Key('Topic').eq("iot/smarthome/lightbulb"),
+        ScanIndexForward = False,
+        Limit = 1
+    )
+    message = json.dumps(query_last[u'Items'][0], cls=DecimalEncoder)
+    message_dict = ast.literal_eval(message)
+    return makeResponse(0, message_dict['message'])
 
 @app.route('/home/lightbulb/turn', methods=['POST'])
 @login_required
@@ -98,13 +121,13 @@ def turn():
     else:
         return makeResponse(1,"Bad")
 
-@app.route('/home/trashcan', methods=['GET'])
+@app.route('/home/trashcan/status', methods=['GET'])
 @login_required
 
 def trashcan():
     return 'Fullness'
 
-@app.route('/home/doorlock', methods=['GET'])
+@app.route('/home/doorlock/status', methods=['GET'])
 @login_required
 
 def doorlock_status():
