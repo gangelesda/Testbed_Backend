@@ -2,7 +2,7 @@ from flask import render_template, jsonify, request
 from app import app, db, dynamodb, IoTMEF, lambda_aws
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User
-from app.forms import LoginForm, RegisterForm, TemperatureForm
+from app.forms import LoginForm, RegisterForm
 
 #Imports for DynamoDB
 from boto3.dynamodb.conditions import Key, Attr 
@@ -12,6 +12,8 @@ import ast
 
 #Imports for lambda
 from config import Enums
+
+#Should make new file for this
 
 #Helper
 class DecimalEncoder(json.JSONEncoder):
@@ -64,7 +66,7 @@ def login():
         #Response is same as successful to be easibly handled by android
         response = makeResponse(0, "Login successful", current_user.username)
         return response
-    #CSRF disabled as it was causing trouble with android (fix in later iterations)
+    #CSRF disabled as it was causing trouble with android (fix in later iterations) (Prob not need a form)
     form = LoginForm(csrf_enabled=False)
     if form.validate():
         user = User.query.filter_by(username=form.username.data).first()

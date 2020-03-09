@@ -27,9 +27,3 @@ class RegisterForm(FlaskForm):
         if user is not None:
             raise ValidationError('Email already in use')
 
-#TODO: Maybe validate range of temp? Or leave as vuln?
-class TemperatureForm(FlaskForm):
-    temperature = IntegerField('Temperature', validators=[DataRequired()])
-
-class DoorLockForm(FlaskForm):
-    pin = IntegerField('Pin', validators=[DataRequired(), Length(min=4, max=4)])
