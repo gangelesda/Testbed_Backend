@@ -1,14 +1,17 @@
-from flask import render_template, jsonify
-from app import app, db, dynamodb, IoTMEF
+from flask import render_template, jsonify, request
+from app import app, db, dynamodb, IoTMEF, lambda_aws
 from flask_login import current_user, login_user, logout_user, login_required
 from app.models import User
-from app.forms import LoginForm, RegisterForm, TemperatureForm, LightBulbForm
+from app.forms import LoginForm, RegisterForm, TemperatureForm
 
 #Imports for DynamoDB
 from boto3.dynamodb.conditions import Key, Attr 
 import json
 import decimal
 import ast
+
+#Imports for lambda
+from config import Enums
 
 #Helper
 class DecimalEncoder(json.JSONEncoder):
@@ -28,6 +31,23 @@ def makeResponse(stat, msg, uname=None):
     return jsonify(status = stat,
                     message = msg,
                     full_name = uname)
+
+#To invoke Lambda
+def sendToLambda(topic, action):
+    payload = {"topic": topic, 
+                "payload": {
+                    "action": action
+                }
+            }
+    #Invoke Lambda to publish
+    result = lambda_aws.invoke(
+        FunctionName = Enums.LAMBDA_FUNC,
+        InvocationType = 'RequestResponse',
+        Payload = json.dumps(payload)
+    )
+    range = result['Payload'].read()
+    api_response = json.loads(range)
+    return api_response['ResponseMetadata']['HTTPStatusCode'] 
 
 @app.route('/')
 @app.route('/index')   
@@ -88,21 +108,37 @@ def register():
 @app.route('/home/thermostat/status', methods=['GET'])
 @login_required
 
-def thermostart_get_temp():
-    return 'Current Temp'
+def thermostart_status():
+    query_last = IoTMEF.query(
+        KeyConditionExpression = Key('Topic').eq(Enums.THERMO_TOPIC_STATUS),
+        ScanIndexForward = False,
+        Limit = 1
+    )
+    message = json.dumps(query_last[u'Items'][0], cls=DecimalEncoder)
+    message_dict = ast.literal_eval(message)
+    return makeResponse(0, message_dict['message'])
 
 @app.route('/home/thermostat/set', methods=['POST'])
 @login_required
 
 def set_temp():
-    return 'Set Temperature'
+    action = request.form.get('temp')
+    if (action is None):
+        return makeResponse(1, "Missing correct field")
+
+    invokeLambda = sendToLambda(Enums.THERMO_TOPIC_ACTION, action)
+
+    if (invokeLambda == 200):
+        return makeResponse(0, "Thermostat set to " + action)
+    else:
+        return makeResponse(1, "Something Failed in the process")
 
 @app.route('/home/lightbulb/status', methods=['GET'])
 @login_required
 
 def lightbulb_status():
     query_last = IoTMEF.query(
-        KeyConditionExpression = Key('Topic').eq("iot/smarthome/lightbulb"),
+        KeyConditionExpression = Key('Topic').eq(Enums.LIGHTBULB_TOPIC_STATUS),
         ScanIndexForward = False,
         Limit = 1
     )
@@ -114,30 +150,61 @@ def lightbulb_status():
 @login_required
 
 def turn():
-    print("Here")
-    form = LightBulbForm(csrf_enabled = False)
-    if form.validate_on_submit():
-        return makeResponse(0,"Turned")
+    action = request.form.get('turn')
+    if (action is None):
+        return makeResponse(1, "Missing correct field")
+
+    invokeLambda = sendToLambda(Enums.LIGHTBULB_TOPIC_ACTION, action)
+
+    if (invokeLambda == 200):
+        return makeResponse(0, "Lightbulb turned " + action)
     else:
-        return makeResponse(1,"Bad")
+        return makeResponse(1, "Something Failed in the process")
+    
 
 @app.route('/home/trashcan/status', methods=['GET'])
 @login_required
 
 def trashcan():
-    return 'Fullness'
+    query_last = IoTMEF.query(
+        KeyConditionExpression = Key('Topic').eq(Enums.TRASH_TOPIC_STATUS),
+        ScanIndexForward = False,
+        Limit = 1
+    )
+    message = json.dumps(query_last[u'Items'][0], cls=DecimalEncoder)
+    message_dict = ast.literal_eval(message)
+    return makeResponse(0, message_dict['message'])
+
 
 @app.route('/home/doorlock/status', methods=['GET'])
 @login_required
 
 def doorlock_status():
-    return 'Locked'
+    query_last = IoTMEF.query(
+        KeyConditionExpression = Key('Topic').eq(Enums.DOORLOCK_TOPIC_STATUS),
+        ScanIndexForward = False,
+        Limit = 1
+    )
+    message = json.dumps(query_last[u'Items'][0], cls=DecimalEncoder)
+    message_dict = ast.literal_eval(message)
+    return makeResponse(0, message_dict['message'])
 
 @app.route('/home/doorlock/action', methods=['POST'])
 @login_required
 
+#TBD For Lambda
 def lock_unlock():
-    return 'Locked'
+    #Encrypted???
+    action = request.form.get('pin')
+    if (action is None):
+        return makeResponse(1, "Missing correct field")
+
+    invokeLambda = sendToLambda(Enums.DOORLOCK_TOPIC_ACTION, action)
+
+    if (invokeLambda != 200):
+        return makeResponse(1, "Something Failed in the process")
+    
+    return makeResponse(0, "Success")
 
 @app.route('/home/camera', methods=['GET'])
 @login_required

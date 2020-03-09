@@ -33,7 +33,3 @@ class TemperatureForm(FlaskForm):
 
 class DoorLockForm(FlaskForm):
     pin = IntegerField('Pin', validators=[DataRequired(), Length(min=4, max=4)])
-
-#TODO: Maybe validate bulb?
-class LightBulbForm(FlaskForm):
-    turn = StringField('Status', validators=[DataRequired()])
