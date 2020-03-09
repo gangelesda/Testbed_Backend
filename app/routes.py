@@ -124,7 +124,7 @@ def thermostart_status():
 @login_required
 
 def set_temp():
-    action = request.form.get('temp')
+    action = request.json["temp"]
     if (action is None):
         return makeResponse(1, "Missing correct field")
 
@@ -152,10 +152,9 @@ def lightbulb_status():
 @login_required
 
 def turn():
-    action = request.form.get('turn')
+    action = request.json["turn"]
     if (action is None):
         return makeResponse(1, "Missing correct field")
-
     invokeLambda = sendToLambda(Enums.LIGHTBULB_TOPIC_ACTION, action)
 
     if (invokeLambda == 200):
@@ -197,7 +196,7 @@ def doorlock_status():
 #TBD For Lambda
 def lock_unlock():
     #Encrypted???
-    action = request.form.get('pin')
+    action = request.json["pin"]
     if (action is None):
         return makeResponse(1, "Missing correct field")
 
